@@ -1,0 +1,173 @@
+local uis = game:GetService("UserInputService")
+local rs = game:GetService("RunService")
+
+local myPlayer = game.Players.LocalPlayer
+local myChar = myPlayer.Character or myPlayer.CharacterAdded:Wait()
+local myHRP = myChar:WaitForChild("HumanoidRootPart")
+local camera = game.Workspace.CurrentCamera
+
+local flying = false
+local speed = 1  -- Default starting speed
+local maxSpeed = 100
+local minSpeed = 1
+local clickCount = 0
+
+-- Create GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = myPlayer.PlayerGui
+
+-- Draggable function
+local function makeDraggable(frame)
+    local dragging, dragInput, dragStart, startPos
+
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+
+    uis.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- Toggle Flight Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 200, 0, 50)
+toggleButton.Position = UDim2.new(0.5, -100, 0.75, -25)
+toggleButton.Text = "Toggle Flight"
+toggleButton.Parent = screenGui
+toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextScaled = true
+toggleButton.RichText = true
+
+local uiCornerToggle = Instance.new("UICorner")
+uiCornerToggle.CornerRadius = UDim.new(0, 10)
+uiCornerToggle.Parent = toggleButton
+
+makeDraggable(toggleButton)
+
+-- Speed Display Label
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 200, 0, 50)
+speedLabel.Position = UDim2.new(0.3, -100, 0.65, -25)
+speedLabel.Text = "Speed: " .. speed .. " | Clicks: " .. clickCount
+speedLabel.Parent = screenGui
+speedLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.TextScaled = true
+speedLabel.RichText = true
+
+local uiCornerLabel = Instance.new("UICorner")
+uiCornerLabel.CornerRadius = UDim.new(0, 10)
+uiCornerLabel.Parent = speedLabel
+
+-- "+" Button
+local plusButton = Instance.new("TextButton")
+plusButton.Size = UDim2.new(0, 50, 0, 50)
+plusButton.Position = UDim2.new(0.3, 60, 0.75, -25)
+plusButton.Text = "+"
+plusButton.Parent = screenGui
+plusButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+plusButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+plusButton.TextScaled = true
+plusButton.RichText = true
+
+local uiCornerPlus = Instance.new("UICorner")
+uiCornerPlus.CornerRadius = UDim.new(0, 10)
+uiCornerPlus.Parent = plusButton
+
+makeDraggable(plusButton)
+
+-- "-" Button
+local minusButton = Instance.new("TextButton")
+minusButton.Size = UDim2.new(0, 50, 0, 50)
+minusButton.Position = UDim2.new(0.3, -110, 0.75, -25)
+minusButton.Text = "-"
+minusButton.Parent = screenGui
+minusButton.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+minusButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+minusButton.TextScaled = true
+minusButton.RichText = true
+
+local uiCornerMinus = Instance.new("UICorner")
+uiCornerMinus.CornerRadius = UDim.new(0, 10)
+uiCornerMinus.Parent = minusButton
+
+makeDraggable(minusButton)
+
+-- Fly function
+local bp = Instance.new("BodyPosition", myHRP)
+bp.MaxForce = Vector3.new(400000, 400000, 400000)
+bp.D = 10
+bp.P = 10000
+
+local bg = Instance.new("BodyGyro", myHRP)
+bg.MaxTorque = Vector3.new(400000, 400000, 400000)
+bg.D = 10
+
+function fly()
+    flying = true
+    while flying do
+        rs.RenderStepped:Wait()
+        bp.Position = myHRP.Position + ((myHRP.Position - camera.CFrame.p).unit * speed)
+        bg.CFrame = CFrame.new(camera.CFrame.p, myHRP.Position)
+    end
+end
+
+function endFlying()
+    bp.MaxForce = Vector3.new()
+    bg.MaxTorque = Vector3.new()
+    flying = false
+end
+
+-- Toggle Flight Button Click Event
+toggleButton.MouseButton1Click:Connect(function()
+    if not flying then
+        fly()
+    else
+        endFlying()
+    end
+end)
+
+-- "+" Button Click Event
+plusButton.MouseButton1Click:Connect(function()
+    if speed < maxSpeed then
+        speed = speed + 1
+        clickCount = clickCount + 1
+        speedLabel.Text = "Speed: " .. speed .. " | Clicks: " .. clickCount
+    end
+end)
+
+-- "-" Button Click Event
+minusButton.MouseButton1Click:Connect(function()
+    if speed > minSpeed then
+        speed = speed - 1
+        if clickCount > 0 then
+            clickCount = clickCount - 1
+        end
+        speedLabel.Text = "Speed: " .. speed .. " | Clicks: " .. clickCount
+    end
+end)
